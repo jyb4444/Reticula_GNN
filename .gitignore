@@ -1,0 +1,15 @@
+# Ignore Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Ignore temporary files created by R
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+*.Rproj.user
+
+# Ignore temporary files created by Jupyter
+*.bak
+*.swp
+*.swo
+*.~*
