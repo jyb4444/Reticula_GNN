@@ -235,13 +235,21 @@ for (iter in 1:num_iterations) {
   })
   
   rxns <- train_rxn2ensembls.nls %>% names()
+  val_rxns <- val_rxn2ensembls.nls %>% names()
   
   rxn_pca.nls <- list()
   full_rxn_pca_results.nls <- list()
   rxn_id_2_result_file_idx.nls <- list()
+
+  val_rxn_pca.nls <- list()
+  val_full_rxn_pca_results.nls <- list()
+  val_rxn_id_2_result_file_idx.nls <- list()
   
   n_rxns <- length(rxns)
   result_idx <- 1
+
+  val_n_rxns <- length(val_rxns)
+  val_result_idx <- 1
   
   cat("Performing PCA for each reaction...\n")
   for (rxn_id_idx in seq(1:n_rxns)) {
@@ -287,11 +295,64 @@ for (iter in 1:num_iterations) {
       result_idx <- result_idx + 1
     }
   }
+
+  for (rxn_id_idx in seq(1:val_n_rxns)) {
+    rxn_id <- val_rxns[rxn_id_idx]
+    
+    ensembl_ids <- val_rxn2ensembls.nls[[rxn_id]]
+    
+    if (!all(ensembl_ids %in% rownames(val_vst.count.mtx))) {
+      ensembl_ids <- ensembl_ids[ensembl_ids %in% rownames(val_vst.count.mtx)]
+      if (length(ensembl_ids) == 0) {
+        next
+      }
+    }
+    
+    rxn_pca <- prcomp(t(val_vst.count.mtx[ensembl_ids, ]), scale. = TRUE)
+    
+    val_full_rxn_pca_results.nls[[rxn_id]] <- rxn_pca
+    val_rxn_id_2_result_file_idx.nls[[rxn_id]] <- val_result_idx
+    
+    val_rxn_pca.nls[[rxn_id]] <- rxn_pca$x[, 1]
+    
+    if (rxn_id_idx %% 100 == 0) {
+      cat(paste0("Processed ", rxn_id_idx, " of ", val_n_rxns, " reactions (", 
+                round((rxn_id_idx + 1)/val_n_rxns, digits = 3) * 100, "%)...\n"))
+    }
+    
+    if (rxn_id_idx %% 1000 == 0) {
+      cat(paste0("Storing PCA objects containing reactions ", rxn_id_idx-1000, 
+                "-", rxn_id_idx, " of ", val_n_rxns, " reactions (", 
+                round((rxn_id_idx + 1)/val_n_rxns, digits = 3) * 100, "%)...\n"))
+      
+      tryCatch({
+        saveRDS(val_full_rxn_pca_results.nls, 
+                paste0(iter_out_dir, "/val_full_rxn_pca_results_nls", rxn_id_idx-1000, 
+                      "-", rxn_id_idx, "_train_", iter, ".Rds"))
+        cat("Saved intermediate PCA results successfully.\n")
+      }, error = function(e) {
+        cat("Error saving intermediate PCA results:", conditionMessage(e), "\n")
+      })
+      
+      val_full_rxn_pca_results.nls <- list()
+      gc()
+      val_result_idx <- val_result_idx + 1
+    }
+  }
   
   tryCatch({
     saveRDS(rxn_id_2_result_file_idx.nls, paste0(iter_out_dir, "/rxn_id_2_result_file_idx_nls_train_", iter, ".Rds"))
     saveRDS(full_rxn_pca_results.nls, paste0(iter_out_dir, "/full_rxn_pca_results_nls_train_", iter, ".Rds"))
     saveRDS(rxn_pca.nls, paste0(iter_out_dir, "/rxn_pca_nls_train_", iter, ".Rds"))
+    cat("Saved final PCA results successfully.\n")
+  }, error = function(e) {
+    cat("Error saving final PCA results:", conditionMessage(e), "\n")
+  })
+
+  tryCatch({
+    saveRDS(val_rxn_id_2_result_file_idx.nls, paste0(iter_out_dir, "/val_rxn_id_2_result_file_idx_nls_train_", iter, ".Rds"))
+    saveRDS(val_full_rxn_pca_results.nls, paste0(iter_out_dir, "/val_full_rxn_pca_results_nls_train_", iter, ".Rds"))
+    saveRDS(val_rxn_pca.nls, paste0(iter_out_dir, "/val_rxn_pca_nls_train_", iter, ".Rds"))
     cat("Saved final PCA results successfully.\n")
   }, error = function(e) {
     cat("Error saving final PCA results:", conditionMessage(e), "\n")
@@ -303,18 +364,30 @@ for (iter in 1:num_iterations) {
     cat("Error reading reaction network:", conditionMessage(e), "\n")
     return(NULL)
   })
+
+  val_E <- tryCatch({
+    read.table(paste0(IN_DIR, "ReactionNetwork_Rel.txt"))
+  }, error = function(e) {
+    cat("Error reading reaction network:", conditionMessage(e), "\n")
+    return(NULL)
+  })
   
-  if (is.null(E)) {
-    cat("Skipping remaining steps due to error reading reaction network.\n")
-    next
-  }
+
   
   rxn2nodeLabel.nls <- list()
   nodeLabel2rxn.nls <- list()
+
+  val_rxn2nodeLabel.nls <- list()
+  val_nodeLabel2rxn.nls <- list()
   
   for (i in 1:length(rxn_pca.nls)) {
     rxn2nodeLabel.nls[[names(rxn_pca.nls)[i]]] <- i
     nodeLabel2rxn.nls[[i]] <- names(rxn_pca.nls)[i]
+  }
+
+  for (i in 1:length(val_rxn_pca.nls)) {
+    val_rxn2nodeLabel.nls[[names(val_rxn_pca.nls)[i]]] <- i
+    val_nodeLabel2rxn.nls[[i]] <- names(val_rxn_pca.nls)[i]
   }
   
   E <- E %>%
@@ -322,8 +395,21 @@ for (iter in 1:num_iterations) {
     dplyr::filter(V3 %in% names(rxn2nodeLabel.nls)) %>%
     dplyr::select(V1, V3)
   
+  val_E <- val_E %>%
+    dplyr::filter(V1 %in% names(val_rxn2nodeLabel.nls)) %>%
+    dplyr::filter(V3 %in% names(val_rxn2nodeLabel.nls)) %>%
+    dplyr::select(V1, V3)
+  
   tryCatch({
     write.table(E, file=paste0(IN_DIR, "edgeLabels_train_", iter, ".csv"),
+                row.names = FALSE, col.names = FALSE)
+    cat("Saved edge labels successfully.\n")
+  }, error = function(e) {
+    cat("Error saving edge labels:", conditionMessage(e), "\n")
+  })
+
+  tryCatch({
+    write.table(val_E, file=paste0(IN_DIR, "val_edgeLabels_train_", iter, ".csv"),
                 row.names = FALSE, col.names = FALSE)
     cat("Saved edge labels successfully.\n")
   }, error = function(e) {
@@ -340,6 +426,17 @@ for (iter in 1:num_iterations) {
   
   z <- unlist(rxn2nodeLabel.nls)
   y <- unlist(nodeLabel2rxn.nls)
+
+  val_node1 <- numeric()
+  val_node2 <- numeric()
+  
+  for (i in 1:nrow(val_E)) {
+    val_node1 <- c(val_node1, val_rxn2nodeLabel.nls[[as.character(val_E$V1[i])]])
+    val_node2 <- c(val_node2, val_rxn2nodeLabel.nls[[as.character(val_E$V3[i])]])
+  }
+  
+  val_z <- unlist(val_rxn2nodeLabel.nls)
+  val_y <- unlist(val_nodeLabel2rxn.nls)
   
   tryCatch({
     write.table(z, file=paste0(IN_DIR, "rxn2nodeLabel_nls_train_", iter, ".csv"),
@@ -350,11 +447,26 @@ for (iter in 1:num_iterations) {
   }, error = function(e) {
     cat("Error saving node mappings:", conditionMessage(e), "\n")
   })
+
+  tryCatch({
+    write.table(val_z, file=paste0(IN_DIR, "val_rxn2nodeLabel_nls_train_", iter, ".csv"),
+                row.names = TRUE, col.names = FALSE)
+    write.table(val_y, file=paste0(IN_DIR, "val_nodeLabel2rxn_nls_train_", iter, ".csv"),
+                row.names = TRUE, col.names = FALSE)
+    cat("Saved node mappings successfully.\n")
+  }, error = function(e) {
+    cat("Error saving node mappings:", conditionMessage(e), "\n")
+  })
   
   E <- data.frame(node1 = node1, node2 = node2)
   
   X <- as.data.frame(rxn_pca.nls)
   Y <- as.data.frame(train_tissues)
+
+  val_E <- data.frame(node1 = val_node1, node2 = val_node2)
+  
+  val_X <- as.data.frame(val_rxn_pca.nls)
+  val_Y <- as.data.frame(val_tissues)
   
   tryCatch({
     write.table(E, file=paste0(IN_DIR, "edges_train_", iter, ".txt"),
@@ -370,67 +482,16 @@ for (iter in 1:num_iterations) {
     cat("Error saving GNN training data:", conditionMessage(e), "\n")
   })
   
-  cat("Applying PCA transformation to validation data...\n")
-  
-  val_rxn_pca.nls <- list()
-  
-  for (rxn_id in names(train_rxn2ensembls.nls)) {
-    ensembl_ids <- train_rxn2ensembls.nls[[rxn_id]]
-    
-    if (!all(ensembl_ids %in% rownames(val_vst.count.mtx)) || is.null(full_rxn_pca_results.nls[[rxn_id]])) {
-      ensembl_ids <- ensembl_ids[ensembl_ids %in% rownames(val_vst.count.mtx)]
-      if (length(ensembl_ids) == 0 || is.null(full_rxn_pca_results.nls[[rxn_id]])) {
-        next
-      }
-    }
-    
-    pca_model <- full_rxn_pca_results.nls[[rxn_id]]
-    
-    common_ensembl_ids <- intersect(ensembl_ids, rownames(val_vst.count.mtx))
-    if (length(common_ensembl_ids) > 0) {
-      val_data_for_pca <- t(val_vst.count.mtx[common_ensembl_ids, ])
-      
-      val_data_for_pca_scaled <- scale(val_data_for_pca, 
-                                       center = pca_model$center[common_ensembl_ids], 
-                                       scale = pca_model$scale[common_ensembl_ids])
-      
-      val_pca_projection <- val_data_for_pca_scaled %*% pca_model$rotation[common_ensembl_ids, 1, drop=FALSE]
-      
-      val_rxn_pca.nls[[rxn_id]] <- val_pca_projection[, 1]
-    }
-  }
-  
   tryCatch({
-    saveRDS(val_rxn_pca.nls, paste0(iter_out_dir, "/rxn_pca_nls_val_", iter, ".Rds"))
-    cat("Saved validation PCA results successfully.\n")
-  }, error = function(e) {
-    cat("Error saving validation PCA results:", conditionMessage(e), "\n")
-  })
-  
-  X_val <- as.data.frame(val_rxn_pca.nls)
-  Y_val <- as.data.frame(val_tissues)
-  
-  tryCatch({
-    write.table(X_val, file=paste0(IN_DIR, "node_features_val_", iter, ".txt"),
+    write.table(val_E, file=paste0(IN_DIR, "edges_val_", iter, ".txt"),
                 row.names = FALSE, col.names = FALSE)
-    write.table(Y_val, file=paste0(IN_DIR, "graph_targets_val_", iter, ".txt"),
+    write.table(val_X, file=paste0(IN_DIR, "node_features_val_", iter, ".txt"),
                 row.names = FALSE, col.names = FALSE)
-    write.table(X_val, file=paste0(IN_DIR, "node_features2_val_", iter, ".txt"),
-                row.names = TRUE, col.names = TRUE)
-    cat("Saved GNN validation data successfully.\n")
+    write.table(val_Y, file=paste0(IN_DIR, "graph_targets_val_", iter, ".txt"),
+                row.names = FALSE, col.names = FALSE)
+    cat("Saved GNN training data successfully.\n")
   }, error = function(e) {
-    cat("Error saving GNN validation data:", conditionMessage(e), "\n")
-  })
-  
-  tryCatch({
-    file.copy(paste0(IN_DIR, "edges_train_", iter, ".txt"), OUT_DIR, overwrite = TRUE)
-    file.copy(paste0(IN_DIR, "node_features_train_", iter, ".txt"), OUT_DIR, overwrite = TRUE)
-    file.copy(paste0(IN_DIR, "graph_targets_train_", iter, ".txt"), OUT_DIR, overwrite = TRUE)
-    file.copy(paste0(IN_DIR, "node_features_val_", iter, ".txt"), OUT_DIR, overwrite = TRUE)
-    file.copy(paste0(IN_DIR, "graph_targets_val_", iter, ".txt"), OUT_DIR, overwrite = TRUE)
-    cat("Copied key files to main output directory successfully.\n")
-  }, error = function(e) {
-    cat("Error copying key files to main output directory:", conditionMessage(e), "\n")
+    cat("Error saving GNN training data:", conditionMessage(e), "\n")
   })
   
   cat(paste0("Completed iteration ", iter, " of ", num_iterations, "\n"))

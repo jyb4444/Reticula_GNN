@@ -224,10 +224,28 @@ def calculate_per_class_metrics(y_true, y_pred, class_mapping, output_dir, fold_
         })
     
     df = pd.DataFrame(results)
-    output_file = os.path.join(output_dir, f"tissue_metrics_fold_{fold_idx}.csv")
-    df.to_csv(output_file, index=False)
+    output_file_csv = os.path.join(output_dir, f"tissue_metrics_fold_{fold_idx}.csv")
+    df.to_csv(output_file_csv, index=False)
     
-    print(f"Per-tissue metrics saved to {output_file}")
+    output_file_txt = os.path.join(output_dir, f"tissue_metrics_fold_{fold_idx}.txt")
+    with open(output_file_txt, 'w') as f:
+        f.write(f"Per-tissue Performance Summary:\n")
+        
+        correct_predictions = sum(y_pred == y_true)
+        total_samples = len(y_true)
+        f.write(f"Number of samples: {total_samples}\n")
+        f.write(f"Correct predictions: {correct_predictions}\n")
+        f.write(f"Overall Accuracy: {correct_predictions/total_samples:.4f}\n\n")
+        
+        for result in results:
+            f.write(f"Tissue: \"{result['tissue']}\"\n")
+            f.write(f"  Precision: {result['Precision']:.4f}\n")
+            f.write(f"  Recall: {result['Recall']:.4f}\n")
+            f.write(f"  F1 Score: {result['F1_score']:.4f}\n")
+            f.write(f"  MCC: {result['MCC']:.4f}\n")
+            f.write(f"  TP: {result['TP']}, FP: {result['FP']}, TN: {result['TN']}, FN: {result['FN']}\n\n")
+    
+    print(f"Per-tissue metrics saved to {output_file_csv} and {output_file_txt}")
     
     return df
 
@@ -329,6 +347,19 @@ def main():
             f.write(f'{i},{train_losses[i]:.6f},{train_accs[i]:.6f}\n')
     
     print(f"Training results saved to {path}")
+
+    print(f'\nTraining completed in {end_time - start_time:.2f}s')
+    print(f'Best Train Acc: {best_train_acc:.4f} (Epoch {best_epoch})')
+
+    train_predictions, train_true_labels = test_with_predictions(train_loader, model, device)
+
+    train_metrics = calculate_per_class_metrics(
+        train_true_labels, 
+        train_predictions, 
+        class_mapping, 
+        args.output_dir, 
+        fold_idx=1
+    )
 
 if __name__ == "__main__":
     main()

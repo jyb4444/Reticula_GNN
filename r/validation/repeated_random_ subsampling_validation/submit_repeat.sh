@@ -12,9 +12,9 @@
 #SBATCH --mail-user=ykj2018720@gmail.com  
 
 source /mnt/home/yuankeji/anaconda3/etc/profile.d/conda.sh
-conda activate rpy_env
+conda activate /mnt/scratch/yuankeji/rpy_env
 
-OUTPUT_DIR="/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/GNN"
+OUTPUT_DIR="/mnt/scratch/yuankeji/RanceLab/reticula_new/gtex/output/"
 mkdir -p ${OUTPUT_DIR}
 
 echo "Job started at $(date)" > ${OUTPUT_DIR}/job_info.txt

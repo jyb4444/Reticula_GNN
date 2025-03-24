@@ -12,7 +12,7 @@
 export PATH=/mnt/home/yuankeji/anaconda3/bin:$PATH
 
 source /mnt/home/yuankeji/anaconda3/etc/profile.d/conda.sh
-conda activate rpy_env
+conda activate /mnt/scratch/yuankeji/rpy_env
 
 echo "Job ID: $SLURM_JOB_ID"
 echo "Array Task ID: $SLURM_ARRAY_TASK_ID"
