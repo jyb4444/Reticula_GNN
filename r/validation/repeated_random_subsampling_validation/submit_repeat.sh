@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1                  # Run 1 task per node
 #SBATCH --cpus-per-task=4           # Request 4 CPUs per task
 #SBATCH --mem=16G                   # Request 16GB memory per node
-#SBATCH --time=24:00:00             # Set time limit to 24 hours
+#SBATCH --time=72:00:00             # Set time limit to 24 hours
 #SBATCH --gres=gpu:1                # Request 1 GPU per node (if needed)
 #SBATCH --partition=gpu             # Use the GPU partition (adjust as needed)
 

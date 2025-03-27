@@ -46,10 +46,10 @@ HIDDEN_CHANNELS = 64
 BATCH_SIZE = 64
 EPOCHS = 500
 
-# Default file paths (will be overridden by command-line arguments when provided)
-edges_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/edges_all.txt'
-node_features_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/node_features_all.txt'
-graph_targets_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/graph_targets_all.txt'
+# # Default file paths (will be overridden by command-line arguments when provided)
+# edges_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/edges_all.txt'
+# node_features_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/node_features_all.txt'
+# graph_targets_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/graph_targets_all.txt'
 
 log_lock = threading.Lock()
 

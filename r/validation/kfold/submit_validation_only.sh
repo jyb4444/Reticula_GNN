@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --job-name=straitified_kfold_val
+#SBATCH --job-name=stratified_kfold_val
 #SBATCH --output=/mnt/home/yuankeji/RanceLab/validation/k-fold-gnn-val/gtex_kfold_val_%A_%a.out
 #SBATCH --error=/mnt/home/yuankeji/RanceLab/validation/k-fold-gnn-val/gtex_kfold_val_%A_%a.err
-#SBATCH --time=1-00:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4  # Keep this as is - good for CPU-based processing

@@ -3,7 +3,7 @@
 #SBATCH --output=/mnt/home/yuankeji/RanceLab/validation/rrs-val/gnn_trial_%A_%a.out
 #SBATCH --error=/mnt/home/yuankeji/RanceLab/validation/rrs-val/gnn_trial_%A_%a.err
 #SBATCH --array=1-10
-#SBATCH --time=24:00:00
+#SBATCH --time=72:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G

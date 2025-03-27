@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=gtex_kfold
+#SBATCH --job-name=stratified_kfold_train
 #SBATCH --output=gtex_kfold_gnn_%A_%a.out
 #SBATCH --error=gtex_kfold_gnn_%A_%a.err
 #SBATCH --time=5-00:00:00
@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
-#SBATCH --array=0-9
+#SBATCH --array=1-10
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH --mail-user=ykj2018720@gmail.com
 
@@ -21,7 +21,7 @@ BASE_DIR="/mnt/home/yuankeji/RanceLab/reticula_new/reticula"
 SCRIPT_DIR="/mnt/home/yuankeji/RanceLab/validation"
 DATA_DIR="${BASE_DIR}/data/gtex"
 INPUT_DIR="${DATA_DIR}/input"
-OUTPUT_DIR="$/mnt/scratch/yuankeji/RanceLab/reticula_new/output"
+OUTPUT_DIR="$/mnt/home/yuankeji/RanceLab/validation/k-fold-gnn-train"
 GNN_DIR="${DATA_DIR}/GNN"
 
 R_SCRIPT="${SCRIPT_DIR}/stratified_kfold_data.R"
