@@ -358,7 +358,7 @@ def main():
         train_predictions, 
         class_mapping, 
         args.output_dir, 
-        fold_idx=1
+        fold_idx=args.fold
     )
 
 if __name__ == "__main__":
