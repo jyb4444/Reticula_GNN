@@ -36,7 +36,8 @@ EPOCHS = 500
 TEST_RATIO = 0.2
 
 # File paths
-output_dir2 = "/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/"
+output_dir2 = "/mnt/home/yuankeji/RanceLab/validation/rrs-val/"
+output_dir3 = "/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/"
 
 def validate_splits(output_dir, run_id):
     test_files = {
@@ -124,7 +125,7 @@ def train(loader, model, optimizer, criterion, dv):
     return correct / len(loader.dataset)  # Derive ratio of correct predictions.
 
 
-def test(loader, model, criterion, dv):
+def test(loader, model, criterion, dv, trial_id):
     model.eval()
 
     targets = []
@@ -139,9 +140,9 @@ def test(loader, model, criterion, dv):
         pred = out.argmax(dim=1)  # Use the class with highest probability.
         predictions += torch.Tensor.tolist(pred)
     
-    # Save raw predictions
-    np.savetxt(output_dir2, np.transpose([targets, predictions]),
-               fmt='%d', delimiter='\t', header='target\tprediction')
+    # # Save raw predictions
+    # np.savetxt(output_dir2+f"rrs_val_predictions_{trial_id}", np.transpose([targets, predictions]),
+    #            fmt='%d', delimiter='\t', header='target\tprediction')
     
     # Calculate ARI
     ari = adjusted_rand_score(targets, predictions)
@@ -157,7 +158,7 @@ def test(loader, model, criterion, dv):
     
     # Save metrics results to CSV
     metrics_df = pd.DataFrame(metrics_results)
-    metrics_file = os.path.join(os.path.dirname(output_dir2), "rrs_detailed_metrics.csv")
+    metrics_file = os.path.join(os.path.dirname(output_dir2), f"rrs_detailed_metrics_{trial_id}.csv")
     metrics_df.to_csv(metrics_file, index=False)
     
     # Print summary
@@ -211,16 +212,15 @@ def calculate_metrics(y_true, y_pred, class_mapping):
 def run_trial(trial_id, seed):
     set_seed(seed)
 
-    output_dir = f"rrs_trial_{trial_id}"
-    os.makedirs(output_dir, exist_ok=True)
-    log_file = os.path.join(output_dir, "log.txt")
+    output_dir = f"/mnt/home/yuankeji/RanceLab/validation/rrs-val/"
+    log_file = os.path.join(output_dir, f"log_{trial_id}.txt")
 
     with open(log_file, "w") as f:
         f.write(f"Trial {trial_id} started at {datetime.datetime.now()}\n")
         f.write(f"Seed: {seed}\n")
         f.write(f"Parameters: INPUT_CHANNELS={INPUT_CHANNELS}, HIDDEN_CHANNELS={HIDDEN_CHANNELS}, "
                 f"BATCH_SIZE={BATCH_SIZE}, EPOCHS={EPOCHS}\n")
-    edges_fn, node_features_fn, graph_targets_fn = validate_splits(output_dir2, trial_id)
+    edges_fn, node_features_fn, graph_targets_fn = validate_splits(output_dir3, trial_id)
     (edge_v1, edge_v2) = read_reactome_graph(edges_fn)
     
     device = cpu = torch.device('cpu')
@@ -235,7 +235,7 @@ def run_trial(trial_id, seed):
 
     model.lin = Linear(HIDDEN_CHANNELS, num_classes)
 
-    model_fn = f'/mnt/scratch/yuankeji/RanceLab/reticula_new/gtex/output/exp_${trial_id}/trained_pytorch_model_trial_{trial_id}.pt'
+    model_fn = f'/mnt/home/yuankeji/RanceLab/validation/rrs-train/trial_{trial_id}/trained_pytorch_model_trial_{trial_id}.pt'
 
     sd = torch.load(model_fn, map_location=device)
     change_key(sd, 'conv1.lin_l.weight', 'conv1.lin_rel.weight')
@@ -273,16 +273,20 @@ def run_trial(trial_id, seed):
     train_data_list = data_list[0::2]
     train_data_loader = build_reactome_graph_loader(train_data_list, BATCH_SIZE)
     for epoch in range(EPOCHS):
-        train_acc = train(model, train_data_loader, optimizer, criterion, device)
+        train_acc = train(train_data_loader, model, optimizer, criterion, device)
         print(f'Epoch: {epoch}, Train Acc: {train_acc}')
+        with open(log_file, "a") as f:
+            f.write(f"{epoch},{train_acc}\n")
+
         if train_acc == 1.0:
             break
+
 
     test_data_list = data_list[1::2]
     print(f'Number of test graphs: {len(test_data_list)}')
 
     test_data_loader = build_reactome_graph_loader(test_data_list, BATCH_SIZE)
-    test_ari = test(test_data_loader, model, criterion, device)
+    test_ari = test(test_data_loader, model, criterion, device, trial_id)
     print(f'test_ari: {test_ari}')
     
     # Save the class mapping to a file
@@ -291,8 +295,8 @@ def run_trial(trial_id, seed):
         json.dump(class_mapping, f)
     print(f"Class mapping saved to {mapping_file}")
 
-    model_save_name = f'rrs_val_model.pt'
-    path = f'/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/tcga/GNN/{model_save_name}'
+    model_save_name = f'rrs_val_model_{trial_id}.pt'
+    path = f'/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/GEO_model_validation/GNN/{model_save_name}'
     torch.save(model.state_dict(), path)
 
     with open(log_file, "a") as f:

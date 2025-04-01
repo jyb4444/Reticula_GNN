@@ -18,7 +18,7 @@ BASE_OUTPUT_DIR="/mnt/scratch/yuankeji/RanceLab/reticula_new/gtex/output"
 OUTPUT_DIR="${BASE_OUTPUT_DIR}/exp_${SLURM_ARRAY_TASK_ID}"
 mkdir -p ${OUTPUT_DIR}
 
-python repeated_random_subsampling_validation.py --trial_id ${SLURM_ARRAY_TASK_ID}
+python rrs_train.py --trial_id ${SLURM_ARRAY_TASK_ID}
 
 # Print some information about the job
 echo "Job ID: $SLURM_JOB_ID"

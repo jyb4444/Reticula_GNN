@@ -40,9 +40,6 @@ edges_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/ed
 node_features_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/node_features_all.txt'
 graph_targets_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/graph_targets_all.txt'
 
-import os
-import numpy as np
-
 def split_data(edges_fn, node_features_fn, graph_targets_fn, test_ratio=0.2, run_id=1, output_dir="/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/"):
     """
     Randomly split the dataset while maintaining sample correspondence across the three files.
@@ -60,12 +57,31 @@ def split_data(edges_fn, node_features_fn, graph_targets_fn, test_ratio=0.2, run
     """
     os.makedirs(output_dir, exist_ok=True)
     
-    # 1. Read data and store sample indices
-    with open(node_features_fn, 'r') as f:
-        num_samples = len(f.readlines())
-    indices = list(range(num_samples))
+    # 1. Read data using the correct methods
+    # Read node features
+    features = np.loadtxt(node_features_fn)
+    num_samples = features.shape[0]
     
-    # 2. Shuffle sample indices randomly
+    # Read graph targets 
+    targets = np.loadtxt(graph_targets_fn, dtype=str, delimiter=",")
+    
+    # Read edges data
+    def read_reactome_graph(edges_fn):
+        edge_v1 = []
+        edge_v2 = []
+        for line in open(edges_fn, 'r'):
+            data = line.split()
+            node1 = int(data[0]) - 1  # subtracting to convert R idx to python idx
+            node2 = int(data[1]) - 1  # " "
+            edge_v1.append(node1)
+            edge_v2.append(node2)
+        return edge_v1, edge_v2
+    
+    edge_v1, edge_v2 = read_reactome_graph(edges_fn)
+    
+    # 2. Create and shuffle sample indices
+    indices = list(range(num_samples))
+    np.random.seed(run_id)  # Use run_id as random seed for reproducibility
     np.random.shuffle(indices)
     
     # 3. Split dataset using shuffled indices
@@ -73,61 +89,51 @@ def split_data(edges_fn, node_features_fn, graph_targets_fn, test_ratio=0.2, run
     test_indices = indices[:test_size]
     train_indices = indices[test_size:]
     
-    # 4. Extract data using indices
-    def split_file(input_fn, train_indices, test_indices, output_train_fn, output_test_fn):
-        train_data = []
-        test_data = []
-        with open(input_fn, 'r') as f:
-            data = f.readlines()
-            for i, line in enumerate(data):
-                if i in train_indices:
-                    train_data.append(line)
-                elif i in test_indices:
-                    test_data.append(line)
-        
-        with open(output_train_fn, 'w') as f:
-            f.writelines(train_data)
-        with open(output_test_fn, 'w') as f:
-            f.writelines(test_data)
-        
-        return train_data, test_data
+    # 4. Split and save the features
+    train_features = features[train_indices]
+    test_features = features[test_indices]
+    np.savetxt(os.path.join(output_dir, f"train_features_{run_id}.txt"), train_features)
+    np.savetxt(os.path.join(output_dir, f"test_features_{run_id}.txt"), test_features)
     
-    train_edges, test_edges = split_file(edges_fn, train_indices, test_indices,
-                                         os.path.join(output_dir, f"train_edges_{run_id}.txt"),
-                                         os.path.join(output_dir, f"test_edges_{run_id}.txt"))
+    # 5. Split and save the targets
+    train_targets = targets[train_indices]
+    test_targets = targets[test_indices]
+    np.savetxt(os.path.join(output_dir, f"train_targets_{run_id}.txt"), train_targets, fmt='%s', delimiter=",")
+    np.savetxt(os.path.join(output_dir, f"test_targets_{run_id}.txt"), test_targets, fmt='%s', delimiter=",")
     
-    train_features, test_features = split_file(node_features_fn, train_indices, test_indices,
-                                               os.path.join(output_dir, f"train_features_{run_id}.txt"),
-                                               os.path.join(output_dir, f"test_features_{run_id}.txt"))
+    # 6. Split and save the edges
+    # Since edges represent relationships between nodes, we'll just save the original edges file
+    # for both train and test sets, as this is the common approach with graph data
+    with open(os.path.join(output_dir, f"train_edges_{run_id}.txt"), 'w') as f:
+        for v1, v2 in zip(edge_v1, edge_v2):
+            # Converting back to R indexing (1-based) when saving
+            f.write(f"{v1+1} {v2+1}\n")
     
-    train_targets, test_targets = split_file(graph_targets_fn, train_indices, test_indices,
-                                             os.path.join(output_dir, f"train_targets_{run_id}.txt"),
-                                             os.path.join(output_dir, f"test_targets_{run_id}.txt"))
+    with open(os.path.join(output_dir, f"test_edges_{run_id}.txt"), 'w') as f:
+        for v1, v2 in zip(edge_v1, edge_v2):
+            # Converting back to R indexing (1-based) when saving
+            f.write(f"{v1+1} {v2+1}\n")
     
-    return (train_edges, train_features, train_targets), (test_edges, test_features, test_targets)
+    # 7. Return the split data
+    return (
+        (edge_v1, edge_v2, train_features, train_targets),
+        (edge_v1, edge_v2, test_features, test_targets)
+    )
 
 
-def build_reactome_graph_datalist(train_features, train_edges, train_targets):
-    edge_v1 = []
-    edge_v2 = []
-    for line in train_edges:
-        data = line.split()
-        node1 = int(data[0]) - 1
-        node2 = int(data[1]) - 1
-        edge_v1.append(node1)
-        edge_v2.append(node2)
+def build_reactome_graph_datalist(edge_v1, edge_v2, features, targets):
     edge_index = torch.tensor([edge_v1, edge_v2], dtype=torch.long)
-    feature_v = np.array([list(map(float, feature.split())) for feature in train_features])
-    target_v = np.array([target.strip() for target in train_targets])
+    
     target_encoder = sklearn.preprocessing.LabelEncoder()
-    target_v = target_encoder.fit_transform(target_v)
+    target_v = target_encoder.fit_transform(targets)
     num_classes = len(np.unique(target_v))
+    
     data_list = []
-    for row_idx in range(len(feature_v)):
-        features = feature_v[row_idx, :]
-        x = torch.tensor(features, dtype=torch.float).unsqueeze(1)
+    for row_idx in range(len(features)):
+        x = torch.tensor(features[row_idx], dtype=torch.float).unsqueeze(1)
         y = torch.tensor(target_v[row_idx], dtype=torch.long)
         data_list.append(Data(x=x, y=y, edge_index=edge_index))
+    
     return data_list, num_classes
 
 def build_reactome_graph_loader(data_list, batch_size):
@@ -226,9 +232,15 @@ def run_trial(trial_id, seed):
         f.write(f"Seed: {seed}\n")
         f.write(f"Parameters: INPUT_CHANNELS={INPUT_CHANNELS}, HIDDEN_CHANNELS={HIDDEN_CHANNELS}, "
                 f"BATCH_SIZE={BATCH_SIZE}, EPOCHS={EPOCHS}\n")
+        f.flush()
 
     train_data, test_data = split_data(edges_fn, node_features_fn, graph_targets_fn, TEST_RATIO, trial_id)
-    train_data_list, num_classes = build_reactome_graph_datalist(train_data[1], train_data[0], train_data[2])
+    train_data_list, num_classes = build_reactome_graph_datalist(
+        train_data[0],  # edge_v1
+        train_data[1],  # edge_v2
+        train_data[2],  # train_features
+        train_data[3]   # train_targets
+    )
     train_loader = build_reactome_graph_loader(train_data_list, BATCH_SIZE)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -243,6 +255,7 @@ def run_trial(trial_id, seed):
         acc_str += f'{train_acc:.4f}\n'
         with open(log_file, "a") as f:
             f.write(f'Epoch: {epoch:03d}, Train Acc: {train_acc:.4f}, Train Loss: {train_loss:.4f}\n')
+            f.flush()
         print(f'Epoch: {epoch:03d}, Train Acc: {train_acc:.4f}, Train Loss: {train_loss:.4f}')
 
     training_acc_fn = f"graph_classification_acc_trial_{trial_id}.txt"
@@ -255,19 +268,21 @@ def run_trial(trial_id, seed):
     torch.save(model.state_dict(), path)
     with open(log_file, "a") as f:
         f.write(f"model saved as {path}\n")
+        f.flush()
     print(f"model saved as {path}")
 
     with open(log_file, "a") as f:
         f.write(f"Trial {trial_id} completed at {datetime.datetime.now()}\n")
+        f.flush()
     
     
     
     target_encoder = sklearn.preprocessing.LabelEncoder()
-    target_v = np.array([target.strip() for target in train_data[2]])
+    target_v = np.array([target.strip() for target in train_data[3]])
     target_encoder.fit(target_v)
     class_mapping = {i: label for i, label in enumerate(target_encoder.classes_)}
 
-    test_data_list, _ = build_reactome_graph_datalist(test_data[1], test_data[0], test_data[2])
+    test_data_list, _ = build_reactome_graph_datalist(test_data[0], test_data[1], test_data[2], test_data[3])
     test_loader = build_reactome_graph_loader(test_data_list, BATCH_SIZE)
     model.eval()
     all_preds = []

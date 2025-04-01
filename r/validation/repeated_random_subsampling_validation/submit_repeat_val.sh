@@ -15,7 +15,7 @@ conda activate /mnt/scratch/yuankeji/rpy_env
 # 设置工作目录
 cd /mnt/home/yuankeji/RanceLab/reticula_new/reticula/validation/
 
-python repeated_random_subsampling_validation.py --trial_id ${SLURM_ARRAY_TASK_ID}
+python rrs_val.py --trial_id ${SLURM_ARRAY_TASK_ID}
 
 # Print some information about the job
 echo "Job ID: $SLURM_JOB_ID"
