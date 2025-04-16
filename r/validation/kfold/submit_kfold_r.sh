@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=gnn_kfold           
-#SBATCH --output=gnn_kfold_r_%A_%a.out   
-#SBATCH --error=gnn_kfold_r_%A_%a.err    
+#SBATCH --output=/mnt/home/yuankeji/RanceLab/validation/data_preparation/gnn_kfold_r_%A_%a.out   
+#SBATCH --error=/mnt/home/yuankeji/RanceLab/validation/data_preparation/gnn_kfold_r_%A_%a.err    
 #SBATCH --ntasks=1                     
 #SBATCH --cpus-per-task=4              
 #SBATCH --gres=gpu:2                   

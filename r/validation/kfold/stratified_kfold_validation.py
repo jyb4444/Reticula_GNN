@@ -41,15 +41,14 @@ def set_seed(seed):
 
 INPUT_CHANNELS = 1
 OUTPUT_CHANNELS = 51  # Original model output size
-NEW_CHANNELS = 13     # New dataset output size 
 HIDDEN_CHANNELS = 64
 BATCH_SIZE = 64
 EPOCHS = 500
 
 # # Default file paths (will be overridden by command-line arguments when provided)
-# edges_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/edges_all.txt'
-# node_features_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/node_features_all.txt'
-# graph_targets_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/gtex/input/graph_targets_all.txt'
+# edges_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/GEO_model_training/input/edges_all.txt'
+# node_features_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/GEO_model_training/input/node_features_all.txt'
+# graph_targets_fn = '/mnt/home/yuankeji/RanceLab/reticula_new/reticula/data/GEO_model_training/input/graph_targets_all.txt'
 
 log_lock = threading.Lock()
 
