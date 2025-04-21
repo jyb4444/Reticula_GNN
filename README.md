@@ -41,7 +41,7 @@ The original repository contains workflows and scripts to process human gene exp
 - **Model Training:** We follow the core methodology but retrain the GNN with mouse-specific data to assess biochemical reaction patterns in our new study.
 
 ### Graphical representation of key changes
-<img width="1042" alt="graphical Abstract 2024-08-06 15 09 30" src="https://github.com/user-attachments/assets/dd950cfd-7304-443f-b419-2ab7ce7fc682">
+![Graphical Abstract](assets/graphical_abstract.png)
 
 ## Associated Paper
 Our application of this modified workflow is detailed in:
