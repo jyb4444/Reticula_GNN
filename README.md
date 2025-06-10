@@ -68,7 +68,7 @@ If you use this repository, please cite both our paper and the original Reticula
 Burkhart JG, Wu G, Song X, et al. *Biology-inspired graph neural network encodes reactome and reveals biochemical reactions of disease.* Patterns. 2023 May 22. [DOI: 10.1016/j.patter.2023.100758](https://doi.org/10.1016/j.patter.2023.100758)  
 
 **Our Paper:**  
-[Provide full citation for your paper here]  
+https://doi.org/10.1093/toxsci/kfaf065  
 
 ---
 This repository serves as an adaptation of Reticula for mouse data, maintaining the foundational methodology while extending its application to new biological contexts.
